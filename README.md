@@ -67,7 +67,7 @@ and the debian/ maintainer scripts.
 
 ## One-time setup (maintainer)
 
-- **GPG key**: Create a dedicated GPG signing key for this apt repository (do not reuse across projects for security isolation). Store the **private** key and passphrase **first in 1Password** (vault "tailrocks", item "holla-apt GPG Signing Key" — see exact structure below; this is the source of truth and backup). Then manually copy the full armored private key into the GitHub secret `APT_GPG_PRIVATE_KEY` and the passphrase into `APT_GPG_PASSPHRASE`. (We never load secrets from 1Password inside GitHub Actions.) Commit/publish the **public** half as `holla.gpg` (and into the published tree).
+- **GPG key**: Create a dedicated GPG signing key for this apt repository (do not reuse across projects for security isolation). Store the private key and passphrase securely. Manually copy the full armored private key into the GitHub secret `APT_GPG_PRIVATE_KEY` and the passphrase into `APT_GPG_PASSPHRASE`. Commit/publish the **public** half as `holla.gpg` (and into the published tree).
 - Set `SignWith:` in [`conf/distributions`](conf/distributions) to the key id
   (uncomment and replace the placeholder).
 - Enable **GitHub Pages** for this repo → Source: `GitHub Actions` (you should **always** use GitHub Actions for Pages deployments in these setups; never "Deploy from a branch").
@@ -82,22 +82,9 @@ and the debian/ maintainer scripts.
 - (Optional but recommended) Also wire the dispatch so the publish runs
   automatically after the debs land here.
 
-### 1Password item structure (in vault "tailrocks")
+### GPG key handling (maintainer only)
 
-Item name: `holla-apt GPG Signing Key`
-
-- **Private** section
-  - `private-key`: Attachment (the armored private key, e.g. named `holla-apt-private.asc`)
-  - `passphrase`: Password
-- **Public** section
-  - `public-key`: Text (armored public key)
-  - `key-id`: Text
-  - `fingerprint`: Text
-- **Metadata** section
-  - `created`: Date
-  - `notes`: Text (e.g. "Signing key for holla-apt.tailrocks.com Debian repository. Used exclusively by publish.yml for reprepro signing.")
-
-Tags: `apt`, `gpg`, `signing`, `holla`, `tailrocks`
+Use a dedicated key per apt repository. Keep the private key material and passphrase in a secure location accessible only to maintainers. Manually populate the GitHub repository secrets `APT_GPG_PRIVATE_KEY` (armored private key) and `APT_GPG_PASSPHRASE`. The public key is committed as `holla.gpg` and published at the root of the site.
 
 ## Triggering a publish
 
