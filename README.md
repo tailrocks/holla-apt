@@ -5,18 +5,18 @@ adaptive dev environment CLI. Installs and upgrades `holla` with native `apt`.
 
 The signed repository is published to GitHub Pages at:
 
-> https://apt.tailrocks.com/holla-apt/
+> https://holla-apt.tailrocks.com/
 
 ## Install
 
 ```bash
 # 1. trust the signing key (scoped to this repo via signed-by)
 sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://apt.tailrocks.com/holla-apt/holla.gpg \
+curl -fsSL https://holla-apt.tailrocks.com/holla.gpg \
   | sudo tee /etc/apt/keyrings/holla.gpg > /dev/null
 
 # 2. add the repo
-echo "deb [signed-by=/etc/apt/keyrings/holla.gpg] https://apt.tailrocks.com/holla-apt stable main" \
+echo "deb [signed-by=/etc/apt/keyrings/holla.gpg] https://holla-apt.tailrocks.com stable main" \
   | sudo tee /etc/apt/sources.list.d/holla.list
 
 # 3. install
@@ -62,7 +62,7 @@ upgrade` picks it up.
    so that `reprepro` can keep old package versions across publishes.)
 
 Design notes: modeled directly on the velnor-apt + velnor-runner pattern. See
-holla's full design doc [docs/debian-apt-repo.md](https://github.com/tailrocks/holla/blob/main/docs/debian-apt-repo.md) (includes the proper serving host `apt.tailrocks.com/holla-apt` as used in the ChainArgos environment), `release-deb.yml`, `Cargo.toml` (the [package.metadata.deb] section),
+holla's full design doc [docs/debian-apt-repo.md](https://github.com/tailrocks/holla/blob/main/docs/debian-apt-repo.md) (includes the proper serving host `holla-apt.tailrocks.com` as used in the ChainArgos environment), `release-deb.yml`, `Cargo.toml` (the [package.metadata.deb] section),
 and the debian/ maintainer scripts.
 
 ## One-time setup (maintainer)
@@ -73,6 +73,7 @@ and the debian/ maintainer scripts.
 - Set `SignWith:` in [`conf/distributions`](conf/distributions) to the key id
   (uncomment and replace the placeholder).
 - Enable **GitHub Pages** for this repo → Source: `GitHub Actions` (you should **always** use GitHub Actions for Pages deployments in these setups; never "Deploy from a branch").
+- Set **Custom domain** to `holla-apt.tailrocks.com`.
 - In the main `tailrocks/holla` repo, add a PAT (fine-grained with Contents:write +
   Actions:write on `tailrocks/holla-apt`, or a classic PAT with `repo` scope) as
   `GH_HOLLA_APT_TOKEN`. This is used by holla's `release-deb.yml` (the dedicated
