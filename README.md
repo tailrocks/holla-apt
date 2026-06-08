@@ -27,6 +27,8 @@ sudo apt install holla
 holla
 ```
 
+Debian packages (`.deb`) for `amd64` and `arm64` are also attached to every GitHub Release of holla and can be installed directly with `dpkg -i holla_*.deb`.
+
 ## Upgrade
 
 ```bash
