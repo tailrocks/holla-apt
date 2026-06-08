@@ -5,18 +5,18 @@ adaptive dev environment CLI. Installs and upgrades `holla` with native `apt`.
 
 The signed repository is published to GitHub Pages at:
 
-> https://<pages-host>/holla-apt/
+> https://www.zhokhov.com/holla-apt/
 
 ## Install
 
 ```bash
 # 1. trust the signing key (scoped to this repo via signed-by)
 sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://<pages-host>/holla-apt/holla.gpg \
+curl -fsSL https://www.zhokhov.com/holla-apt/holla.gpg \
   | sudo tee /etc/apt/keyrings/holla.gpg > /dev/null
 
 # 2. add the repo
-echo "deb [signed-by=/etc/apt/keyrings/holla.gpg] https://<pages-host>/holla-apt stable main" \
+echo "deb [signed-by=/etc/apt/keyrings/holla.gpg] https://www.zhokhov.com/holla-apt stable main" \
   | sudo tee /etc/apt/sources.list.d/holla.list
 
 # 3. install
