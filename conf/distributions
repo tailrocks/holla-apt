@@ -1,0 +1,10 @@
+Origin: Holla
+Label: Holla
+Suite: stable
+Codename: stable
+Architectures: amd64 arm64
+Components: main
+Description: apt repository for holla — adaptive dev environment CLI
+# Set this to the GPG signing key id (or fingerprint) after creating the key.
+# Leave commented to build an UNSIGNED repo (not recommended; apt will warn).
+# SignWith: <YOUR_KEYID_HERE>
