@@ -56,8 +56,10 @@ upgrade` picks it up.
 3. The [`publish.yml`](.github/workflows/publish.yml) workflow here is
    triggered (via `gh workflow run ... -f version=...` or repository_dispatch),
    downloads the `.deb` from this repo's release, adds it to the apt pool with
-   `reprepro` (which GPG-signs `Release` / `InRelease`), and publishes the tree
-   (`dists/`, `pool/`, `holla.gpg`) to the `gh-pages` branch → GitHub Pages.
+   `reprepro` (which GPG-signs `Release` / `InRelease`), uploads the resulting
+   tree as a GitHub Pages artifact, and deploys it using GitHub Actions.
+   (The `gh-pages` branch is still maintained internally as a git state store
+   so that `reprepro` can keep old package versions across publishes.)
 
 Design notes: modeled directly on the velnor-apt + velnor-runner pattern. See
 holla's full design doc [docs/debian-apt-repo.md](https://github.com/tailrocks/holla/blob/main/docs/debian-apt-repo.md) (includes the proper serving host `apt.tailrocks.com/holla-apt` as used in the ChainArgos environment), `release-deb.yml`, `Cargo.toml` (the [package.metadata.deb] section),
@@ -70,7 +72,7 @@ and the debian/ maintainer scripts.
   half as `holla.gpg` (and into the published tree).
 - Set `SignWith:` in [`conf/distributions`](conf/distributions) to the key id
   (uncomment and replace the placeholder).
-- Enable **GitHub Pages** for this repo → Source: `gh-pages` branch.
+- Enable **GitHub Pages** for this repo → Source: `GitHub Actions` (you should **always** use GitHub Actions for Pages deployments in these setups; never "Deploy from a branch").
 - In the main `tailrocks/holla` repo, add a PAT (fine-grained with Contents:write +
   Actions:write on `tailrocks/holla-apt`, or a classic PAT with `repo` scope) as
   `GH_HOLLA_APT_TOKEN`. This is used by holla's `release-deb.yml` (the dedicated
