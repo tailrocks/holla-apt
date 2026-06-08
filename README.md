@@ -60,7 +60,7 @@ upgrade` picks it up.
    (`dists/`, `pool/`, `holla.gpg`) to the `gh-pages` branch → GitHub Pages.
 
 Design notes: modeled directly on the velnor-apt + velnor-runner pattern. See
-holla's `release-deb.yml`, `Cargo.toml` (the [package.metadata.deb] section),
+holla's full design doc [docs/debian-apt-repo.md](https://github.com/tailrocks/holla/blob/main/docs/debian-apt-repo.md) (includes the proper serving host `www.zhokhov.com/holla-apt` as used in the ChainArgos environment), `release-deb.yml`, `Cargo.toml` (the [package.metadata.deb] section),
 and the debian/ maintainer scripts.
 
 ## One-time setup (maintainer)
