@@ -20,17 +20,19 @@ on:
     types: [publish-deb]
 
 permissions:
-  contents: write # push to gh-pages
+  contents: write
+  pages: write
+  id-token: write
 
 concurrency:
-  group: publish-apt
+  group: "pages"
   cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo config (conf/distributions, keep apt state on gh-pages)
+      - name: Checkout repo config (conf/distributions, keep apt state on gh-pages branch for reprepro history)
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Install tooling
@@ -43,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${APT_GPG_PRIVATE_KEY:-}" ]; then
-            echo "::error::APT_GPG_PRIVATE_KEY secret is not set — see README one-time setup."
+            echo "::error::APT_GPG_PRIVATE_KEY secret is not set — see README one-time setup (store values in 1Password first, then copy to GitHub secrets)."
             exit 1
           fi
           echo "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
@@ -67,7 +69,7 @@ jobs:
           gh release download "$TAG" --pattern '*.deb' --dir incoming
           ls -la incoming
 
-      - name: Fetch existing apt tree from gh-pages (so reprepro keeps old versions)
+      - name: Fetch existing apt tree from gh-pages branch (so reprepro keeps old versions)
         run: |
           set -euo pipefail
           git fetch origin gh-pages || true
@@ -90,10 +92,34 @@ jobs:
           done
           ls -R public/dists public/pool | head -50
 
-      - name: Publish to gh-pages
-        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
-          publish_branch: gh-pages
-          keep_files: true
+          path: ./public
+
+      - name: Update gh-pages branch (state only, for reprepro history across publishes)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Replace branch contents with the built public/ tree
+          git checkout --orphan gh-pages-new || true
+          git rm -rf . || true
+          cp -a public/. .
+          git add .
+          git commit -m "Update for $TAG" || echo "No changes"
+          git branch -M gh-pages
+          git push origin gh-pages --force || true
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -67,9 +67,7 @@ and the debian/ maintainer scripts.
 
 ## One-time setup (maintainer)
 
-- Create a GPG signing key; add its **private** half + passphrase as repo secrets
-  `APT_GPG_PRIVATE_KEY` and `APT_GPG_PASSPHRASE`; commit/publish the **public**
-  half as `holla.gpg` (and into the published tree).
+- **GPG key**: Create a dedicated GPG signing key for this apt repository (do not reuse across projects for security isolation). Store the **private** key and passphrase **first in 1Password** (vault "tailrocks", item "holla-apt GPG Signing Key" — see exact structure below; this is the source of truth and backup). Then manually copy the full armored private key into the GitHub secret `APT_GPG_PRIVATE_KEY` and the passphrase into `APT_GPG_PASSPHRASE`. (We never load secrets from 1Password inside GitHub Actions.) Commit/publish the **public** half as `holla.gpg` (and into the published tree).
 - Set `SignWith:` in [`conf/distributions`](conf/distributions) to the key id
   (uncomment and replace the placeholder).
 - Enable **GitHub Pages** for this repo → Source: `GitHub Actions` (you should **always** use GitHub Actions for Pages deployments in these setups; never "Deploy from a branch").
@@ -83,6 +81,23 @@ and the debian/ maintainer scripts.
   can still publish manually via `gh workflow run` or the web UI.
 - (Optional but recommended) Also wire the dispatch so the publish runs
   automatically after the debs land here.
+
+### 1Password item structure (in vault "tailrocks")
+
+Item name: `holla-apt GPG Signing Key`
+
+- **Private** section
+  - `private-key`: Attachment (the armored private key, e.g. named `holla-apt-private.asc`)
+  - `passphrase`: Password
+- **Public** section
+  - `public-key`: Text (armored public key)
+  - `key-id`: Text
+  - `fingerprint`: Text
+- **Metadata** section
+  - `created`: Date
+  - `notes`: Text (e.g. "Signing key for holla-apt.tailrocks.com Debian repository. Used exclusively by publish.yml for reprepro signing.")
+
+Tags: `apt`, `gpg`, `signing`, `holla`, `tailrocks`
 
 ## Triggering a publish
 
