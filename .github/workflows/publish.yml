@@ -100,10 +100,18 @@ jobs:
           APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
-          for deb in incoming/*.deb; do
-            reprepro -b public --gnupghome "$HOME/.gnupg" includedeb stable "$deb"
-          done
-          ls -R public/dists public/pool | head -50
+          # Safe glob handling when there are zero .debs (first publish / key-only refresh).
+          # We still want to publish the .gpg + any pre-existing tree from gh-pages state.
+          shopt -s nullglob
+          debs=(incoming/*.deb)
+          if [ ${#debs[@]} -gt 0 ]; then
+            for deb in "${debs[@]}"; do
+              reprepro -b public --gnupghome "$HOME/.gnupg" includedeb stable "$deb"
+            done
+          else
+            echo "No .debs in incoming/; publishing key + existing tree only."
+          fi
+          ls -R public/dists public/pool 2>/dev/null | head -50 || true
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
