@@ -7,4 +7,4 @@ Components: main
 Description: apt repository for holla — adaptive dev environment CLI
 # Set this to the GPG signing key id (or fingerprint) after creating the key.
 # Leave commented to build an UNSIGNED repo (not recommended; apt will warn).
-# SignWith: <YOUR_KEYID_HERE>
+SignWith: E5BC87724E0F3E0A
