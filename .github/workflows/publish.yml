@@ -45,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${APT_GPG_PRIVATE_KEY:-}" ]; then
-            echo "::error::APT_GPG_PRIVATE_KEY secret is not set — see README one-time setup (store values in 1Password first, then copy to GitHub secrets)."
+            echo "::error::APT_GPG_PRIVATE_KEY secret is not set — see README one-time setup (store values securely, then copy to GitHub secrets)."
             exit 1
           fi
           echo "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
