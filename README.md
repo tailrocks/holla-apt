@@ -50,16 +50,15 @@ upgrade` picks it up.
    portable tarballs.)
 2. It attaches the .deb(s) to the source (holla) GitHub Release, then uploads
    them (cross-repo, using `GH_HOLLA_APT_TOKEN`) to *this* (holla-apt)
-   repository's GitHub Releases under the same tag. This is the same pattern
-   used by velnor / velnor-apt so that the apt publisher only needs to read
-   from its own releases.
+   repository's GitHub Releases under the same tag. The apt publisher only needs
+   to read from its own releases (the .deb is part of the original project's
+   release process).
 3. The [`publish.yml`](.github/workflows/publish.yml) workflow here is
    triggered (via `gh workflow run ... -f version=...` or repository_dispatch),
    downloads the `.deb` from this repo's release, adds it to the apt pool with
    `reprepro` (which GPG-signs `Release` / `InRelease`), uploads the resulting
    tree as a GitHub Pages artifact, and deploys it using GitHub Actions.
-   (The `gh-pages` branch is still maintained internally as a git state store
-   so that `reprepro` can keep old package versions across publishes.)
+   GitHub Pages is deployed via GitHub Actions (the index includes only currently published versions; old .debs remain in historical Releases but are not part of the current apt repo).
 
 Design notes: modeled directly on the velnor-apt + velnor-runner pattern. See
 holla's full design doc [docs/debian-apt-repo.md](https://github.com/tailrocks/holla/blob/main/docs/debian-apt-repo.md) (includes the proper serving host `holla-apt.tailrocks.com` as used in the ChainArgos environment), `release-deb.yml`, `Cargo.toml` (the [package.metadata.deb] section),

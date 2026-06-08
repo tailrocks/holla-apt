@@ -1,7 +1,9 @@
 name: Publish apt repo
 
 # Adds holla .deb(s) to the signed apt pool and publishes the tree to
-# GitHub Pages (gh-pages branch). Trigger after a holla release.
+# GitHub Pages via GitHub Actions. Only current versions are published
+# in the index (old .debs remain in historical Releases but are not
+# part of the current apt repo). Trigger after a holla release.
 on:
   workflow_dispatch:
     inputs:
@@ -32,7 +34,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo config (conf/distributions, keep apt state on gh-pages branch for reprepro history)
+      - name: Checkout repo config (conf/distributions)
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Install tooling
@@ -58,60 +60,53 @@ jobs:
           echo "$APT_GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
             --sign --local-user "$KEYID" --output /dev/null --detach-sign <(echo "prime signing for reprepro") 2>/dev/null || true
 
-      - name: Download holla .deb from this repo's release (best-effort; key publish works with zero debs)
-        # The holla repo's release workflow uploads the .deb(s) to THIS repo's
-        # releases (cross-repo write with a PAT), so publishing here only needs
-        # the same-repo github.token.
+      - name: Download .debs from this repo's releases (source of truth for published versions)
+        # .debs are attached to this repo's Releases (cross-uploaded from the holla source release).
+        # Download only for this version (forget old packages per user request).
+        # Build fresh reprepro tree with only current .debs. No state branch needed.
+        # Best practice: Releases hold the .debs (persistent), Pages (via Actions) holds the current index only.
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ github.event.inputs.version }}${{ github.event.client_payload.version }}
         run: |
-          set +e
+          set -euo pipefail
           mkdir -p incoming
           if [ -n "${VERSION:-}" ]; then
-            TAG="$VERSION"
+            echo "Downloading debs for $VERSION"
+            gh release download "$VERSION" --pattern '*.deb' --dir incoming || echo "No debs for $VERSION"
           else
-            TAG="$(gh release view --json tagName -q .tagName 2>/dev/null || true)"
+            TAG="$(gh release view --json tagName -q .tagName)"
+            echo "Downloading debs for latest $TAG"
+            gh release download "$TAG" --pattern '*.deb' --dir incoming || echo "No debs"
           fi
-          if [ -n "${TAG:-}" ]; then
-            echo "Downloading debs for $TAG (if present)"
-            gh release download "$TAG" --pattern '*.deb' --dir incoming || echo "No matching debs for $TAG"
-          else
-            echo "No release tag available on this repo; publishing current tree + fresh .gpg only"
-          fi
-          ls -la incoming || true
-          set -euo pipefail
+          ls -la incoming
 
-      - name: Fetch existing apt tree from gh-pages branch (so reprepro keeps old versions)
-        run: |
-          set -euo pipefail
-          git fetch origin gh-pages || true
-          mkdir -p public
-          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
-            git --work-tree=public checkout origin/gh-pages -- . || true
-          fi
-          mkdir -p public/conf
-          # Inject the real key id into conf/distributions for SignWith.
-          sed "s/^# SignWith:.*/SignWith: ${GPG_KEYID}/; s/^SignWith:.*/SignWith: ${GPG_KEYID}/" conf/distributions > public/conf/distributions
-          cp holla.gpg public/holla.gpg
-
-      - name: reprepro includedeb (builds + signs Release/InRelease)
+      - name: Build fresh apt repository with reprepro (current versions only)
         env:
           APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
-          # Safe glob handling when there are zero .debs (first publish / key-only refresh).
-          # We still want to publish the .gpg + any pre-existing tree from gh-pages state.
-          shopt -s nullglob
-          debs=(incoming/*.deb)
-          if [ ${#debs[@]} -gt 0 ]; then
-            for deb in "${debs[@]}"; do
+          # Fresh each time: only the .debs being published now. Old versions are forgotten from the index (remain in old Releases for manual dpkg -i if ever needed).
+          rm -rf public
+          mkdir -p public/conf
+          cat > public/conf/distributions << 'DIST'
+Origin: Holla
+Label: Holla
+Codename: stable
+Architectures: amd64 arm64
+Components: main
+Description: apt repository for holla — adaptive dev environment CLI
+SignWith: 
+DIST
+          sed -i "s/^SignWith:.*/SignWith: ${GPG_KEYID}/" public/conf/distributions
+          cp holla.gpg public/holla.gpg
+
+          for deb in incoming/*.deb; do
+            if [ -f "$deb" ]; then
               reprepro -b public --gnupghome "$HOME/.gnupg" includedeb stable "$deb"
-            done
-          else
-            echo "No .debs in incoming/; publishing key + existing tree only."
-          fi
-          ls -R public/dists public/pool 2>/dev/null | head -50 || true
+            fi
+          done
+          ls -R public/dists public/pool | head -50
 
       - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
@@ -121,18 +116,8 @@ jobs:
         with:
           path: ./public
 
-      - name: Update gh-pages branch (state only, for reprepro history across publishes)
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Replace branch contents with the built public/ tree
-          git checkout --orphan gh-pages-new || true
-          git rm -rf . || true
-          cp -a public/. .
-          git add .
-          git commit -m "Update for $TAG" || echo "No changes"
-          git branch -M gh-pages
-          git push origin gh-pages --force || true
+      # No state branch update step. The Releases are the source of truth for .debs.
+      # The index on Pages is always for currently published versions only.
 
   deploy:
     environment:
