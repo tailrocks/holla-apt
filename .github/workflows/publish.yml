@@ -90,14 +90,14 @@ jobs:
           rm -rf public
           mkdir -p public/conf
           cat > public/conf/distributions << 'DIST'
-Origin: Holla
-Label: Holla
-Codename: stable
-Architectures: amd64 arm64
-Components: main
-Description: apt repository for holla — adaptive dev environment CLI
-SignWith: 
-DIST
+          Origin: Holla
+          Label: Holla
+          Codename: stable
+          Architectures: amd64 arm64
+          Components: main
+          Description: apt repository for holla — adaptive dev environment CLI
+          SignWith:
+          DIST
           sed -i "s/^SignWith:.*/SignWith: ${GPG_KEYID}/" public/conf/distributions
           cp holla.gpg public/holla.gpg
 
