@@ -11,5 +11,17 @@ shellcheck = "0.11.0"
 [tasks.actionlint]
 run = "actionlint"
 
+[tasks.shellcheck]
+run = "shellcheck scripts/*.sh"
+
+[tasks.package-update]
+run = "./scripts/package-update.sh"
+
+[tasks.package-update-test]
+run = "./scripts/test-package-update.sh"
+
+[tasks.check]
+depends = ["actionlint", "shellcheck", "package-update-test"]
+
 [settings]
 lockfile = true

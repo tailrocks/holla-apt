@@ -5,6 +5,9 @@ name: Publish apt repo
 # in the index (old .debs remain in historical Releases but are not
 # part of the current apt repo). Trigger after a holla release.
 on:
+  push:
+    branches: [main]
+    paths: [package-state.json]
   workflow_dispatch:
     inputs:
       lanes:
@@ -12,22 +15,10 @@ on:
         type: choice
         default: velnor
         options: [velnor, github, both]
-      version:
-        description: "holla release tag to publish (e.g. v0.3.1). Empty = latest. Must match a tag that has .deb assets attached via release-deb.yml."
-        type: string
-        default: ""
-  # Allow the main holla repo to trigger this (see release-deb.yml, same as velnor):
-  #   gh workflow run publish.yml --repo tailrocks/holla-apt -f version=v0.2.0
-  #
-  # Or via repository_dispatch:
-  #   gh api repos/tailrocks/holla-apt/dispatches \
-  #     -f event_type=publish-deb \
-  #     -F client_payload[version]=v0.2.0
-  repository_dispatch:
-    types: [publish-deb]
 
 permissions:
-  contents: write
+  attestations: read
+  contents: read
   pages: write
   id-token: write
 
@@ -57,6 +48,63 @@ jobs:
       - name: Install system packages through mise
         run: mise bootstrap packages apply --yes
 
+      - name: Download and verify merged package state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          jq -e '
+            keys == ["packages","schema","source_commit","source_ref","source_repository","version"] and
+            .schema == "holla.apt-package-state.v1" and
+            .source_repository == "tailrocks/holla" and
+            (.source_ref | test("^refs/tags/v[0-9]+[.][0-9]+[.][0-9]+$")) and
+            (.source_commit | test("^[0-9a-f]{40}$")) and
+            (.packages | length) == 2
+          ' package-state.json >/dev/null
+          tag=$(jq -r .source_ref package-state.json)
+          tag=${tag#refs/tags/}
+          commit=$(gh api "repos/tailrocks/holla/commits/$tag" --jq .sha)
+          test "$commit" = "$(jq -r .source_commit package-state.json)"
+          mkdir -m 0700 incoming
+          gh release download "$tag" -R tailrocks/holla -p release-manifest.json -p SHA256SUMS -D incoming
+          while IFS= read -r name; do
+            [[ "$name" != */* && "$name" != *..* ]]
+            gh release download "$tag" -R tailrocks/holla -p "$name" -D incoming
+          done < <(jq -r '.packages[].name' package-state.json)
+          jq -e --slurpfile state package-state.json '
+            .schema == "velnor.package-release.v1" and
+            .source_repository == $state[0].source_repository and
+            .source_ref == $state[0].source_ref and
+            .source_commit == $state[0].source_commit and
+            .version == $state[0].version and
+            ([.assets[] | select(.name | endswith(".deb")) | {name,sha256}] | sort_by(.name)) == $state[0].packages
+          ' incoming/release-manifest.json >/dev/null
+          while IFS=$'\t' read -r name digest; do
+            manifest_digest=$(awk -v name="$name" '$2==name || $2=="*"name {print $1}' incoming/SHA256SUMS)
+            test "$digest" = "$manifest_digest"
+            printf '%s  %s\n' "$digest" "incoming/$name"
+          done < <(jq -r '.packages[] | [.name,.sha256] | @tsv' package-state.json) \
+            > incoming/consumer-SHA256SUMS
+          sha256sum --check --strict incoming/consumer-SHA256SUMS
+          while IFS= read -r name; do
+            gh attestation verify "incoming/$name" \
+              --repo tailrocks/holla \
+              --source-ref "$(jq -r .source_ref package-state.json)" \
+              --source-digest "$(jq -r .source_commit package-state.json)" \
+              --signer-workflow tailrocks/velnor-actions/.github/workflows/package-signer.yml \
+              --signer-digest 643c5341b160be151a7fae19b89b6a4f8ab3b275 \
+              --predicate-type https://slsa.dev/provenance/v1 \
+              --deny-self-hosted-runners >/dev/null
+          done < <(jq -r '.packages[].name' package-state.json)
+
+          for tuple in 'x86_64-unknown-linux-gnu amd64' 'aarch64-unknown-linux-gnu arm64'; do
+            read -r target arch <<<"$tuple"
+            deb="incoming/holla-$(jq -r .version package-state.json)-$target.deb"
+            test "$(dpkg-deb -f "$deb" Package)" = holla
+            test "$(dpkg-deb -f "$deb" Version)" = "$(jq -r .version package-state.json)"
+            test "$(dpkg-deb -f "$deb" Architecture)" = "$arch"
+          done
+
       - name: Import GPG signing key
         env:
           APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
@@ -82,27 +130,6 @@ jobs:
           # Prevents "Inappropriate ioctl for device / Pinentry" errors from gpgme/reprepro in CI.
           echo "$APT_GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
             --sign --local-user "$KEYID" --output /dev/null --detach-sign <(echo "prime signing for reprepro") 2>/dev/null || true
-
-      - name: Download .debs from this repo's releases (source of truth for published versions)
-        # .debs are attached to this repo's Releases (cross-uploaded from the holla source release).
-        # Download only for this version (forget old packages per user request).
-        # Build fresh reprepro tree with only current .debs. No state branch needed.
-        # Best practice: Releases hold the .debs (persistent), Pages (via Actions) holds the current index only.
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ github.event.inputs.version }}${{ github.event.client_payload.version }}
-        run: |
-          set -euo pipefail
-          mkdir -p incoming
-          if [ -n "${VERSION:-}" ]; then
-            echo "Downloading debs for $VERSION"
-            gh release download "$VERSION" --pattern '*.deb' --dir incoming || echo "No debs for $VERSION"
-          else
-            TAG="$(gh release view --json tagName -q .tagName)"
-            echo "Downloading debs for latest $TAG"
-            gh release download "$TAG" --pattern '*.deb' --dir incoming || echo "No debs"
-          fi
-          ls -la incoming
 
       - name: Build fresh apt repository with reprepro (current versions only)
         env:
