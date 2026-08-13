@@ -1,0 +1,17 @@
+{
+  "packages": [
+    {
+      "name": "holla-1.0.3-aarch64-unknown-linux-gnu.deb",
+      "sha256": "5db3737c03ca53b3d5059e371c361627f34b311169b7904bd4d4a11d2f207567"
+    },
+    {
+      "name": "holla-1.0.3-x86_64-unknown-linux-gnu.deb",
+      "sha256": "9c326e2de2bf0d27885ad259a1bdccece91fa70aae651d48f0e57610b6cf9a13"
+    }
+  ],
+  "schema": "holla.apt-package-state.v1",
+  "source_commit": "17501fbf0409a4d27b5f617edf851b23b863051d",
+  "source_ref": "refs/tags/v1.0.3",
+  "source_repository": "tailrocks/holla",
+  "version": "1.0.3"
+}
