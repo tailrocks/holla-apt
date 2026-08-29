@@ -21,11 +21,18 @@ run = "./scripts/package-update.sh"
 [tasks.package-update-test]
 run = "./scripts/test-package-update.sh"
 
+# Gate contract (ci-apt.yml runs install/build/test/lint/format as separate
+# steps): every gate reaches exactly one disjoint leaf set, so each leaf runs
+# once per CI lane. `check` stays the depends-only human aggregate. The former
+# build->check and fmt->check edges re-ran all three check leaves 3x per lane.
 [tasks.check]
 depends = ["actionlint", "shellcheck", "package-update-test"]
 
+# Build gate: truthful no-op. This repository ships verified upstream debs;
+# the apt tree is built only in the publish lanes, and no offline build/verify
+# leaf exists. The shared ci-apt template still invokes `mise run build`.
 [tasks.build]
-depends = ["check"]
+run = "true"
 
 [tasks.test]
 depends = ["package-update-test"]
@@ -33,8 +40,11 @@ depends = ["package-update-test"]
 [tasks.lint]
 depends = ["actionlint", "shellcheck"]
 
+# Format gate: truthful no-op. No formatter exists for this class (generated
+# workflows, committed lockfiles, shell scripts); the shared template still
+# invokes `mise run fmt`.
 [tasks.fmt]
-depends = ["check"]
+run = "true"
 
 [settings]
 lockfile = true
