@@ -87,14 +87,31 @@ jobs:
             > incoming/consumer-SHA256SUMS
           sha256sum --check --strict incoming/consumer-SHA256SUMS
           while IFS= read -r name; do
-            gh attestation verify "incoming/$name" \
+            # Signer rotated 2026.8.6 -> 2026.8.31. Verify against the current
+            # signer first, then fall back to the old signer until its window
+            # expires (mirrors velnor-apt's current+old+window rotation).
+            if ! gh attestation verify "incoming/$name" \
               --repo tailrocks/holla \
               --source-ref "$(jq -r .source_ref package-state.json)" \
               --source-digest "$(jq -r .source_commit package-state.json)" \
               --signer-workflow tailrocks/velnor-actions/.github/workflows/package-signer.yml \
-              --signer-digest 643c5341b160be151a7fae19b89b6a4f8ab3b275 \
+              --signer-digest 84a3d2c5f8f74a3054259ac494581b244bf61ee7 \
               --predicate-type https://slsa.dev/provenance/v1 \
-              --deny-self-hosted-runners >/dev/null
+              --deny-self-hosted-runners >/dev/null; then
+              if [ "$(date -u +%s)" -lt "$(date -u -d 2026-09-07T00:00:00Z +%s)" ]; then
+                gh attestation verify "incoming/$name" \
+                  --repo tailrocks/holla \
+                  --source-ref "$(jq -r .source_ref package-state.json)" \
+                  --source-digest "$(jq -r .source_commit package-state.json)" \
+                  --signer-workflow tailrocks/velnor-actions/.github/workflows/package-signer.yml \
+                  --signer-digest 643c5341b160be151a7fae19b89b6a4f8ab3b275 \
+                  --predicate-type https://slsa.dev/provenance/v1 \
+                  --deny-self-hosted-runners >/dev/null
+              else
+                echo "attestation not signed by current signer and old-signer window has expired" >&2
+                exit 1
+              fi
+            fi
           done < <(jq -r '.packages[].name' package-state.json)
 
           for tuple in 'x86_64-unknown-linux-gnu amd64' 'aarch64-unknown-linux-gnu arm64'; do
