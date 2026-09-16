@@ -1,0 +1,58 @@
+schema = 1
+
+[generator]
+repository = "tailrocks/holla-apt"
+
+[workflow]
+profile = "apt-repository"
+runners = "both"
+automatic = "both"
+github_runner = "ubuntu-24.04"
+velnor_labels = ["self-hosted", "velnor-target-mvp"]
+default_branch = "main"
+
+[[units]]
+id = "docs"
+label = "Documentation"
+kind = "docs"
+root = "."
+
+[[static_files]]
+file = ".github/workflows/ci.yml"
+source = ".github-gen/sources/workflows/ci.yml"
+
+[[static_files]]
+file = ".github/workflows/ci-apt.yml"
+source = ".github-gen/sources/workflows/ci-apt.yml"
+
+[[static_files]]
+file = ".github/workflows/package-update.yml"
+source = ".github-gen/sources/workflows/package-update.yml"
+
+[[static_files]]
+file = ".github/workflows/package-updater.yml"
+source = ".github-gen/sources/workflows/package-updater.yml"
+
+[[static_files]]
+file = ".github/workflows/publish.yml"
+source = ".github-gen/sources/workflows/publish.yml"
+
+[[static_files]]
+file = ".github/workflows/renovate.yml"
+source = ".github-gen/sources/workflows/renovate.yml"
+
+[[static_files]]
+file = ".github/actions/aggregate/action.yml"
+source = ".github-gen/sources/actions/aggregate/action.yml"
+
+[[static_files]]
+file = ".github/actions/cache-contract/action.yml"
+source = ".github-gen/sources/actions/cache-contract/action.yml"
+
+[[static_files]]
+file = ".github/actions/run-gate/action.yml"
+source = ".github-gen/sources/actions/run-gate/action.yml"
+
+[[static_files]]
+file = ".github/workflows/AGENTS.md"
+source = ".github-gen/sources/workflows-AGENTS.md"
