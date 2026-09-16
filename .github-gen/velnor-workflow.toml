@@ -1,9 +1,11 @@
 schema = 1
 
 [generator]
+revision = "e13bce4dba15ed5927effde5eb62e8ba453bf100"
 repository = "tailrocks/holla-apt"
 
 [policy]
+ruleset_required_status_checks = ["ci-required"]
 ruleset_external_status_checks = ["DCO"]
 
 [workflow]
@@ -13,7 +15,6 @@ automatic = "both"
 github_runner = "ubuntu-24.04"
 velnor_labels = ["self-hosted", "velnor-target-mvp"]
 default_branch = "main"
-files = ["ci.yml", "ci-apt.yml", "package-update.yml", "package-updater.yml", "publish.yml", "renovate.yml"]
 
 [[units]]
 id = "docs"
