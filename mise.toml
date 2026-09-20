@@ -31,8 +31,12 @@ depends = ["actionlint", "shellcheck", "package-update-test"]
 description = "Run the complete apt repository contract"
 depends = ["check"]
 
+# Build gate: truthful no-op. This repository ships verified upstream
+# debs; no offline build leaf exists. Nothing in CI invokes this task
+# (docs unit has empty commands); it exists so `mise run build` stays
+# total for humans and fleet tooling.
 [tasks.build]
-depends = ["check"]
+run = "true"
 
 [tasks.test]
 depends = ["package-update-test"]
@@ -40,8 +44,9 @@ depends = ["package-update-test"]
 [tasks.lint]
 depends = ["actionlint", "shellcheck"]
 
+# Format gate: truthful no-op. No formatter is pinned for this class.
 [tasks.fmt]
-depends = ["check"]
+run = "true"
 
 [settings]
 lockfile = true
