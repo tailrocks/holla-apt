@@ -34,8 +34,8 @@ label = "Documentation"
 kind = "docs"
 root = "."
 watch = []
-pr_commands = []
-full_commands = []
+pr_commands = ["mise run check"]
+full_commands = ["mise run check"]
 platform = "linux-x64"
 trust = "untrusted-ok"
 [unit.capabilities]

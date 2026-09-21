@@ -58,3 +58,9 @@ id = "docs"
 label = "Documentation"
 kind = "docs"
 root = "."
+# s2 runtime requires every CI unit to declare commands; the s1 tree ran
+# none. `check` is the repo's human aggregate (actionlint + shellcheck +
+# package-update-test, whose publication assertions now target the generated
+# release.yml). Tools below must stay lock-pinned (see velnor-apt).
+ci_tasks = ["check"]
+mise_tools = ["actionlint", "jq", "ripgrep", "shellcheck"]
