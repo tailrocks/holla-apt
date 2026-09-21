@@ -37,14 +37,25 @@ if (cd "$tmp/repo" && VELNOR_VERIFIED_PACKAGE_DIR="$verified" ./scripts/package-
   exit 1
 fi
 
-publish="$root/.github/workflows/publish.yml"
-verify_line=$(rg -n 'name: Download and verify merged package state' "$publish" | cut -d: -f1)
-gpg_line=$(rg -n 'name: Import GPG signing key' "$publish" | cut -d: -f1)
-test "$verify_line" -lt "$gpg_line"
-rg -q 'gh attestation verify "incoming/\$name"' "$publish"
-rg -q 'sha256sum --check --strict incoming/consumer-SHA256SUMS' "$publish"
-rg -q 'paths: \[package-state.json\]' "$publish"
-if rg -q 'repository_dispatch|event\.client_payload|release view --json tagName|Download \.debs from this repo' "$publish"; then
+# The hand-written publish.yml is gone: publication is the generated
+# release.yml (Package feed) now. Same verify-before-mutate contract,
+# asserted against the generated shape.
+release="$root/.github/workflows/release.yml"
+# The publish job needs the verify job, and verify's steps precede the
+# publish steps in the file.
+rg -q 'needs: \[verify\]' "$release"
+verify_line=$(rg -n 'name: Fetch and verify feed inputs' "$release" | cut -d: -f1)
+publish_line=$(rg -n 'name: Publish the staged suite' "$release" | cut -d: -f1)
+test "$verify_line" -lt "$publish_line"
+# Every fetched deb is attested against the source repo, the suite gates on
+# apt-verify, publication goes through apt-publish only, and the
+# verify-to-publish-to-deploy handoff artifacts exist.
+rg -q 'gh attestation verify "\$subject" --repo' "$release"
+rg -q 'velnor-workflow release apt-verify' "$release"
+rg -q 'velnor-workflow release apt-publish' "$release"
+rg -q 'name: apt-incoming' "$release"
+rg -q 'name: apt-staging' "$release"
+if rg -q 'repository_dispatch|event\.client_payload|release view --json tagName|Download \.debs from this repo' "$release"; then
   echo "publication regained mutable or cross-upload authority" >&2
   exit 1
 fi

@@ -1,24 +1,66 @@
-schema = 1
+schema = 2
 
 [generator]
 repository = "tailrocks/holla-apt"
-revision = "4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d"
-[policy]
-ruleset_required_status_checks = ["ci-required"]
-ruleset_external_status_checks = ["DCO"]
-
+# D19 pin: the velnor-workflow BUILD commit whose product rendered this tree.
+revision = "4dec6b9ec28b0d51cb370fd8f5d5401c6186adf0"
 
 [workflow]
-profile = "apt-repository"
-runners = "both"
-automatic = "both"
-github_runner = "ubuntu-24.04"
-velnor_labels = ["self-hosted", "velnor-target-mvp"]
+providers = ["github-hosted"]
+automatic_providers = ["github-hosted"]
 default_branch = "main"
-files = ["ci-unit-docs.yml"]
+profile = "apt-repository"
+
+[workflow.selectors.github-hosted]
+runs_on = ["ubuntu-24.04"]
+
+[policy]
+ruleset_required_status_checks = ["ci-required", "Policy"]
+ruleset_external_status_checks = ["DCO"]
+
+# [renovate] DEFERRED (W4 escalation): s2 `validate_renovate`
+# (s2/config/mod.rs) requires the velnor provider +
+# [workflow.selectors.velnor], but `enforce_visibility_policy` (s2/mod.rs)
+# requires public repos to be exactly [github-hosted] and rejects a velnor
+# selector — so [renovate] is unsatisfiable on public repos at this pin.
+# The renderer itself is provider-agnostic (`control_plane_runner`), so the
+# fix is validation-only (generator side). Re-add with [[declare]]
+# renovate + renovate-validate rows once the generator admits a hosted
+# writer for public repos.
+# [renovate]
+# enabled = true
+# reason = "Scheduled dependency PRs per renovate.json. ..."
+
+[release]
+enabled = true
+reason = "APT feed publisher: verify-before-mutation feed workflow for the holla Debian repository."
+kind = "apt"
+package = "holla"
+binary = "holla"
+source_repository = "tailrocks/holla"
+consumer_repository = "tailrocks/holla-apt"
+manifest_schema = "velnor.package-release.v1"
+signer_fingerprint = "925B7B4B807283B2391DEF2DE5BC87724E0F3E0A"
+passphrase_secret = "APT_GPG_PASSPHRASE"
+signing_key_secret = "APT_GPG_PRIVATE_KEY"
+keyring_path = "holla.gpg"
+apt_origin = "Holla"
+apt_feed_url = "https://holla-apt.tailrocks.com"
+description = "apt repository for holla - adaptive dev environment CLI"
+retention = 1
+
+[[declare]]
+primitive = "release"
+file = "release.yml"
 
 [[units]]
 id = "docs"
 label = "Documentation"
 kind = "docs"
 root = "."
+# s2 runtime requires every CI unit to declare commands; the s1 tree ran
+# none. `check` is the repo's human aggregate (actionlint + shellcheck +
+# package-update-test, whose publication assertions now target the generated
+# release.yml). Tools below must stay lock-pinned (see velnor-apt).
+ci_tasks = ["check"]
+mise_tools = ["actionlint", "jq", "ripgrep", "shellcheck"]
